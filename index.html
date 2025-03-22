@@ -15,11 +15,54 @@
   <input type="file" id="jsonLoader" accept=".json" hidden>
 
   <div id="jsonModal">
-    <h3>Edit JSON</h3>
-    <textarea id="jsonTextarea"></textarea>
-    <br>
-    <button id="updateJsonBtn"><i class="fas fa-save"></i> Update</button>
-    <button id="closeJsonModal"><i class="fas fa-times"></i> Close</button>
+    <div class="modal-header">
+      <h3>Edit Annotations</h3>
+      <button id="closeJsonModal" class="close-btn"><i class="fas fa-times"></i></button>
+    </div>
+    
+    <div class="modal-tabs">
+      <button id="tableViewTab" class="tab-btn active"><i class="fas fa-table"></i> Table View</button>
+      <button id="rawJsonTab" class="tab-btn"><i class="fas fa-code"></i> Raw JSON</button>
+    </div>
+    
+    <div class="modal-content">
+      <div id="tableView" class="tab-content">
+        <div class="resolution-info">
+          <span>Image resolution:</span> 
+          <span id="imageWidth">0</span> × <span id="imageHeight">0</span>
+        </div>
+        
+        <div class="table-container">
+          <table id="linesTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Start X</th>
+                <th>Start Y</th>
+                <th>End X</th>
+                <th>End Y</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="linesTableBody">
+              <!-- Lines will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        
+        <button id="addLineBtn" class="action-btn"><i class="fas fa-plus"></i> Add Line</button>
+      </div>
+      
+      <div id="rawJsonView" class="tab-content hidden">
+        <textarea id="jsonTextarea"></textarea>
+        <div id="jsonError" class="error-message"></div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button id="updateJsonBtn" class="primary-btn"><i class="fas fa-save"></i> Update</button>
+      <button id="cancelJsonBtn" class="secondary-btn"><i class="fas fa-times"></i> Cancel</button>
+    </div>
   </div>
 
   <div id="toolbar" class="expanded">

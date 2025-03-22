@@ -246,8 +246,10 @@
       }
     });
     document.getElementById('resetBtn').addEventListener('click', () => {
-      lines = [];
-      draw();
+      if (confirm('Are you sure you want to delete all lines? This action cannot be undone.')) {
+        lines = [];
+        draw();
+      }
     });
     document.getElementById('exportJsonBtn').addEventListener('click', () => {
       const output = { imageResolution, lines };
@@ -265,14 +267,26 @@
     document.getElementById('loadJsonBtn').addEventListener('click', () => jsonLoader.click());
     jsonLoader.addEventListener('change', handleJsonLoad);
     document.getElementById('editJsonBtn').addEventListener('click', () => {
-      const output = { imageResolution, lines };
-      jsonTextarea.value = JSON.stringify(output, null, 2);
-      jsonModal.style.display = 'block';
+      openJsonEditor();
     });
     document.getElementById('updateJsonBtn').addEventListener('click', handleJsonUpdate);
     document.getElementById('closeJsonModal').addEventListener('click', () => {
       jsonModal.style.display = 'none';
     });
+    document.getElementById('cancelJsonBtn').addEventListener('click', () => {
+      jsonModal.style.display = 'none';
+    });
+    
+    // Tab switching in JSON modal
+    document.getElementById('tableViewTab').addEventListener('click', () => {
+      switchJsonTab('tableView');
+    });
+    document.getElementById('rawJsonTab').addEventListener('click', () => {
+      switchJsonTab('rawJsonView');
+    });
+    
+    // Add line button
+    document.getElementById('addLineBtn').addEventListener('click', addNewLine);
     
     document.getElementById('menuToggle').addEventListener('click', () => {
       const toolbar = document.getElementById('toolbar');
@@ -289,6 +303,234 @@
           }
         });
       });
+    }
+  }
+
+  function switchJsonTab(tabId) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+      tab.classList.add('hidden');
+    });
+    
+    // Show the selected tab content
+    document.getElementById(tabId).classList.remove('hidden');
+    
+    // Update active tab button
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    const activeTab = tabId === 'tableView' ? 'tableViewTab' : 'rawJsonTab';
+    document.getElementById(activeTab).classList.add('active');
+    
+    // If switching to raw JSON, update the textarea from table view
+    if (tabId === 'rawJsonView') {
+      updateJsonFromTable();
+    } else if (tabId === 'tableView') {
+      // Try to update table from JSON
+      try {
+        const data = JSON.parse(jsonTextarea.value);
+        if (validateJsonData(data)) {
+          populateLinesTable(data.lines);
+          updateResolutionDisplay(data.imageResolution);
+        }
+      } catch (err) {
+        // If there's an error, don't do anything - stay in table view with current data
+      }
+    }
+  }
+  
+  function validateJsonData(data) {
+    // Hide any previous error message
+    const errorEl = document.getElementById('jsonError');
+    errorEl.style.display = 'none';
+    
+    if (!data.imageResolution || typeof data.imageResolution !== 'object') {
+      showJsonError('Missing or invalid imageResolution object');
+      return false;
+    }
+    
+    if (!data.imageResolution.width || !data.imageResolution.height ||
+        typeof data.imageResolution.width !== 'number' || 
+        typeof data.imageResolution.height !== 'number') {
+      showJsonError('Invalid image resolution width or height');
+      return false;
+    }
+    
+    if (!Array.isArray(data.lines)) {
+      showJsonError('Lines must be an array');
+      return false;
+    }
+    
+    for (let i = 0; i < data.lines.length; i++) {
+      const line = data.lines[i];
+      if (!line.start || !line.end || 
+          typeof line.start.x !== 'number' || typeof line.start.y !== 'number' ||
+          typeof line.end.x !== 'number' || typeof line.end.y !== 'number') {
+        showJsonError(`Invalid line at index ${i}`);
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  function showJsonError(message) {
+    const errorEl = document.getElementById('jsonError');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+  }
+  
+  function openJsonEditor() {
+    // Prepare table view
+    const output = { imageResolution, lines };
+    populateLinesTable(lines);
+    updateResolutionDisplay(imageResolution);
+    
+    // Prepare raw JSON view
+    jsonTextarea.value = JSON.stringify(output, null, 2);
+    
+    // Show the modal with table view active by default
+    jsonModal.style.display = 'block';
+    switchJsonTab('tableView');
+  }
+  
+  function updateResolutionDisplay(resolution) {
+    document.getElementById('imageWidth').textContent = resolution.width;
+    document.getElementById('imageHeight').textContent = resolution.height;
+  }
+  
+  function populateLinesTable(lines) {
+    const tbody = document.getElementById('linesTableBody');
+    tbody.innerHTML = '';
+    
+    lines.forEach((line, index) => {
+      const tr = document.createElement('tr');
+      tr.dataset.index = index;
+      
+      tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td>${line.start.x}</td>
+        <td>${line.start.y}</td>
+        <td>${line.end.x}</td>
+        <td>${line.end.y}</td>
+        <td class="table-actions">
+          <i class="fas fa-edit edit-btn" data-index="${index}"></i>
+          <i class="fas fa-trash delete-btn" data-index="${index}"></i>
+        </td>
+      `;
+      
+      tbody.appendChild(tr);
+    });
+    
+    // Add event listeners to edit and delete buttons
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => editLine(parseInt(btn.dataset.index)));
+    });
+    
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => deleteLine(parseInt(btn.dataset.index)));
+    });
+  }
+  
+  function editLine(index) {
+    const line = lines[index];
+    const tr = document.querySelector(`tr[data-index="${index}"]`);
+    
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td><input type="number" class="number-input" value="${line.start.x}" id="edit-startX-${index}"></td>
+      <td><input type="number" class="number-input" value="${line.start.y}" id="edit-startY-${index}"></td>
+      <td><input type="number" class="number-input" value="${line.end.x}" id="edit-endX-${index}"></td>
+      <td><input type="number" class="number-input" value="${line.end.y}" id="edit-endY-${index}"></td>
+      <td class="table-actions">
+        <i class="fas fa-check edit-save-btn" data-index="${index}"></i>
+        <i class="fas fa-times edit-cancel-btn" data-index="${index}"></i>
+      </td>
+    `;
+    
+    document.querySelector(`.edit-save-btn[data-index="${index}"]`).addEventListener('click', () => saveLineEdit(index));
+    document.querySelector(`.edit-cancel-btn[data-index="${index}"]`).addEventListener('click', () => cancelLineEdit());
+  }
+  
+  function saveLineEdit(index) {
+    const startX = parseInt(document.getElementById(`edit-startX-${index}`).value);
+    const startY = parseInt(document.getElementById(`edit-startY-${index}`).value);
+    const endX = parseInt(document.getElementById(`edit-endX-${index}`).value);
+    const endY = parseInt(document.getElementById(`edit-endY-${index}`).value);
+    
+    // Validate inputs
+    if (isNaN(startX) || isNaN(startY) || isNaN(endX) || isNaN(endY)) {
+      alert('All values must be valid numbers');
+      return;
+    }
+    
+    // Update the line
+    lines[index] = {
+      start: { x: startX, y: startY },
+      end: { x: endX, y: endY }
+    };
+    
+    // Refresh the table
+    populateLinesTable(lines);
+    
+    // Update the JSON textarea
+    updateJsonFromTable();
+  }
+  
+  function cancelLineEdit() {
+    // Simply refresh the table to its original state
+    populateLinesTable(lines);
+  }
+  
+  function deleteLine(index) {
+    if (confirm('Are you sure you want to delete this line?')) {
+      lines.splice(index, 1);
+      populateLinesTable(lines);
+      updateJsonFromTable();
+    }
+  }
+  
+  function addNewLine() {
+    const newLine = {
+      start: { x: 0, y: 0 },
+      end: { x: 10, y: 10 }
+    };
+    
+    lines.push(newLine);
+    populateLinesTable(lines);
+    updateJsonFromTable();
+    
+    // Scroll to the bottom of the table to show the new line
+    const tableContainer = document.querySelector('.table-container');
+    tableContainer.scrollTop = tableContainer.scrollHeight;
+  }
+  
+  function updateJsonFromTable() {
+    const output = { imageResolution, lines };
+    jsonTextarea.value = JSON.stringify(output, null, 2);
+  }
+
+  function handleJsonUpdate() {
+    // Check which view is active
+    const isTableViewActive = !document.getElementById('tableView').classList.contains('hidden');
+    
+    if (isTableViewActive) {
+      // When in table view, the data is already updated in the lines array
+      draw();
+      jsonModal.style.display = 'none';
+    } else {
+      // When in raw JSON view, parse the JSON and validate
+      try {
+        const data = JSON.parse(jsonTextarea.value);
+        if (validateJsonData(data)) {
+          imageResolution = data.imageResolution;
+          lines = data.lines;
+          draw();
+          jsonModal.style.display = 'none';
+        }
+      } catch (err) {
+        showJsonError('Invalid JSON format: ' + err.message);
+      }
     }
   }
 
@@ -321,7 +563,7 @@
     reader.onload = function(event) {
       try {
         const data = JSON.parse(event.target.result);
-        if (data.lines && data.imageResolution) {
+        if (validateJsonData(data)) {
           imageResolution = data.imageResolution;
           lines = data.lines;
           draw();
@@ -329,26 +571,10 @@
           alert('Invalid JSON format.');
         }
       } catch (err) {
-        alert('Error parsing JSON.');
+        alert('Error parsing JSON: ' + err.message);
       }
     }
     reader.readAsText(file);
-  }
-
-  function handleJsonUpdate() {
-    try {
-      const data = JSON.parse(jsonTextarea.value);
-      if (data.lines && data.imageResolution) {
-        imageResolution = data.imageResolution;
-        lines = data.lines;
-        draw();
-        jsonModal.style.display = 'none';
-      } else {
-        alert('Invalid JSON format.');
-      }
-    } catch (err) {
-      alert('Error parsing JSON.');
-    }
   }
 
   function setupCanvasEvents() {
