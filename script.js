@@ -274,13 +274,11 @@
       jsonModal.style.display = 'none';
     });
     
-    // Add menu toggle functionality
     document.getElementById('menuToggle').addEventListener('click', () => {
       const toolbar = document.getElementById('toolbar');
       toolbar.classList.toggle('expanded');
     });
     
-    // Close toolbar when a button is clicked on mobile
     if (window.innerWidth <= 768) {
       document.querySelectorAll('#toolbar button').forEach(button => {
         button.addEventListener('click', () => {

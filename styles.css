@@ -18,7 +18,7 @@ html, body {
   cursor: pointer;
   width: 40px;
   height: 40px;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 20;
@@ -137,7 +137,7 @@ html, body {
 
 @media (max-width: 768px) {
   .menu-toggle {
-    display: block;
+    display: flex;
   }
   
   #toolbar {
