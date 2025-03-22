@@ -273,6 +273,25 @@
     document.getElementById('closeJsonModal').addEventListener('click', () => {
       jsonModal.style.display = 'none';
     });
+    
+    // Add menu toggle functionality
+    document.getElementById('menuToggle').addEventListener('click', () => {
+      const toolbar = document.getElementById('toolbar');
+      toolbar.classList.toggle('expanded');
+    });
+    
+    // Close toolbar when a button is clicked on mobile
+    if (window.innerWidth <= 768) {
+      document.querySelectorAll('#toolbar button').forEach(button => {
+        button.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            setTimeout(() => {
+              document.getElementById('toolbar').classList.remove('expanded');
+            }, 300);
+          }
+        });
+      });
+    }
   }
 
   function handleImageSelect(e) {

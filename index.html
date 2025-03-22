@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Image Annotator</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+  <button id="menuToggle" class="menu-toggle"><i class="fas fa-bars"></i></button>
+
   <canvas id="canvas"></canvas>
   <input type="file" id="imageLoader" accept="image/*" hidden>
   <input type="file" id="jsonLoader" accept=".json" hidden>
@@ -15,19 +18,27 @@
     <h3>Edit JSON</h3>
     <textarea id="jsonTextarea"></textarea>
     <br>
-    <button id="updateJsonBtn">Update</button>
-    <button id="closeJsonModal">Close</button>
+    <button id="updateJsonBtn"><i class="fas fa-save"></i> Update</button>
+    <button id="closeJsonModal"><i class="fas fa-times"></i> Close</button>
   </div>
 
-  <div id="toolbar">
-    <button id="selectImageBtn">Select Image</button>
-    <button id="drawToolBtn">Draw</button>
-    <button id="eraserToolBtn">Erase</button>
-    <button id="undoBtn">Undo Erase</button>
-    <button id="exportJsonBtn">Export JSON</button>
-    <button id="loadJsonBtn">Load JSON</button>
-    <button id="editJsonBtn">Edit JSON</button>
-    <button id="resetBtn">Reset</button>
+  <div id="toolbar" class="expanded">
+    <div class="toolbar-group file-group">
+      <button id="selectImageBtn"><i class="fas fa-image"></i> <span>Image</span></button>
+      <button id="loadJsonBtn"><i class="fas fa-file-import"></i> <span>Load</span></button>
+      <button id="exportJsonBtn"><i class="fas fa-file-export"></i> <span>Export</span></button>
+      <button id="editJsonBtn"><i class="fas fa-edit"></i> <span>Edit</span></button>
+    </div>
+    
+    <div class="toolbar-group tools-group">
+      <button id="drawToolBtn" class="active"><i class="fas fa-pen"></i> <span>Draw</span></button>
+      <button id="eraserToolBtn"><i class="fas fa-eraser"></i> <span>Erase</span></button>
+    </div>
+    
+    <div class="toolbar-group edit-group">
+      <button id="undoBtn"><i class="fas fa-undo"></i> <span>Undo</span></button>
+      <button id="resetBtn"><i class="fas fa-trash"></i> <span>Reset</span></button>
+    </div>
   </div>
 
   <script src="script.js"></script>
