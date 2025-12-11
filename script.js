@@ -17,6 +17,9 @@
   let erasedStack = [];
 
   let transform = { scale: 1, rotation: 0, centerX: 0, centerY: 0 };
+  let isPanning = false;
+  let panStart = { x: 0, y: 0 };
+  let panStartCenter = { x: 0, y: 0 };
   let baseScale = 1;
   let isGesture = false;
   let gestureInitialDistance = 0;
@@ -24,6 +27,9 @@
   let gestureInitialCenter = { x: 0, y: 0 };
   let gestureInitialImageCoord = { x: 0, y: 0 };
   let initialTransform = { scale: 1, rotation: 0, centerX: 0, centerY: 0 };
+  const ROTATION_STEP = Math.PI / 36;
+  const PAN_STEP = 20;
+  const WHEEL_ROTATION_SENSITIVITY = 0.002;
 
   function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -59,6 +65,38 @@
       x: dx * cos - dy * sin + image.width / 2,
       y: dx * sin + dy * cos + image.height / 2
     };
+  }
+
+  function clampScale(value) {
+    const minScale = baseScale * 0.1;
+    const maxScale = baseScale * 10;
+    return Math.min(Math.max(value, minScale), maxScale);
+  }
+
+  function applyZoom(factor, anchorCanvas) {
+    const newScale = clampScale(transform.scale * factor);
+    const imageCoord = toImageCoords(anchorCanvas.x, anchorCanvas.y);
+    const dx = imageCoord.x - image.width / 2;
+    const dy = imageCoord.y - image.height / 2;
+    const cos = Math.cos(transform.rotation);
+    const sin = Math.sin(transform.rotation);
+    transform.centerX = anchorCanvas.x - (dx * cos - dy * sin) * newScale;
+    transform.centerY = anchorCanvas.y - (dx * sin + dy * cos) * newScale;
+    transform.scale = newScale;
+    draw();
+  }
+
+  function applyRotation(deltaAngle, anchorCanvas) {
+    const newRotation = transform.rotation + deltaAngle;
+    const imageCoord = toImageCoords(anchorCanvas.x, anchorCanvas.y);
+    const dx = imageCoord.x - image.width / 2;
+    const dy = imageCoord.y - image.height / 2;
+    const cos = Math.cos(newRotation);
+    const sin = Math.sin(newRotation);
+    transform.centerX = anchorCanvas.x - (dx * cos - dy * sin) * transform.scale;
+    transform.centerY = anchorCanvas.y - (dx * sin + dy * cos) * transform.scale;
+    transform.rotation = newRotation;
+    draw();
   }
 
   function getTouchDistance(t1, t2) {
@@ -118,6 +156,18 @@
   }
 
   function handlePointerDown(e) {
+    if (!e.touches) {
+      if (e.button === 1 || e.button === 2) {
+        isPanning = true;
+        panStart = { x: e.clientX, y: e.clientY };
+        panStartCenter = { x: transform.centerX, y: transform.centerY };
+        e.preventDefault();
+        return;
+      }
+      if (e.button !== undefined && e.button !== 0) {
+        return;
+      }
+    }
     if (e.touches && e.touches.length >= 2) {
       drawing = false;
       currentLine = null;
@@ -154,6 +204,12 @@
   }
 
   function handlePointerMove(e) {
+    if (isPanning && !e.touches) {
+      transform.centerX = panStartCenter.x + (e.clientX - panStart.x);
+      transform.centerY = panStartCenter.y + (e.clientY - panStart.y);
+      draw();
+      return;
+    }
     if (e.touches && e.touches.length >= 2 && isGesture) {
       e.preventDefault();
       const [t1, t2] = [e.touches[0], e.touches[1]];
@@ -191,6 +247,10 @@
   }
 
   function handlePointerUp(e) {
+    if (isPanning) {
+      isPanning = false;
+      return;
+    }
     if (e.touches && isGesture && e.touches.length < 2) {
       isGesture = false;
       return;
@@ -577,6 +637,86 @@
     reader.readAsText(file);
   }
 
+  function handleWheel(e) {
+    if (!imageLoaded) return;
+    e.preventDefault();
+    const anchor = { x: e.clientX, y: e.clientY };
+    if (e.shiftKey) {
+      applyRotation(-e.deltaY * WHEEL_ROTATION_SENSITIVITY, anchor);
+    } else {
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      applyZoom(factor, anchor);
+    }
+  }
+
+  function handleKeyDown(e) {
+    if (!imageLoaded) return;
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+      return;
+    }
+    const anchor = { x: canvas.width / 2, y: canvas.height / 2 };
+    let needsDraw = false;
+    let handled = false;
+    switch (e.key) {
+      case '+':
+      case '=':
+        applyZoom(1.1, anchor);
+        handled = true;
+        break;
+      case '-':
+      case '_':
+        applyZoom(0.9, anchor);
+        handled = true;
+        break;
+      case 'q':
+      case 'Q':
+        applyRotation(-ROTATION_STEP, anchor);
+        handled = true;
+        break;
+      case 'e':
+      case 'E':
+        applyRotation(ROTATION_STEP, anchor);
+        handled = true;
+        break;
+      case 'ArrowUp':
+      case 'w':
+      case 'W':
+        transform.centerY -= PAN_STEP;
+        needsDraw = true;
+        handled = true;
+        break;
+      case 'ArrowDown':
+      case 's':
+      case 'S':
+        transform.centerY += PAN_STEP;
+        needsDraw = true;
+        handled = true;
+        break;
+      case 'ArrowLeft':
+      case 'a':
+      case 'A':
+        transform.centerX -= PAN_STEP;
+        needsDraw = true;
+        handled = true;
+        break;
+      case 'ArrowRight':
+      case 'd':
+      case 'D':
+        transform.centerX += PAN_STEP;
+        needsDraw = true;
+        handled = true;
+        break;
+      default:
+        break;
+    }
+    if (handled) {
+      e.preventDefault();
+      if (needsDraw) {
+        draw();
+      }
+    }
+  }
+
   function setupCanvasEvents() {
     canvas.addEventListener('mousedown', handlePointerDown);
     canvas.addEventListener('mousemove', handlePointerMove);
@@ -584,10 +724,13 @@
     canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
     canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
     canvas.addEventListener('touchend', handlePointerUp);
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
   }
 
   function init() {
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('keydown', handleKeyDown);
     resizeCanvas();
     setupToolbar();
     setupCanvasEvents();
